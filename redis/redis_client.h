@@ -31,7 +31,11 @@ class RedisClient {
 //
 inline RedisClient::RedisClient(const char *host, int port, int slaves) :
     slaves_(slaves) {
-  context_ = redisConnect(host, port);
+  if (port == 8888) {
+    context_ = redisConnectHoma(host, port);
+  }
+  else
+    context_ = redisConnect(host, port);
   if (!context_ || context_->err) {
     if (context_) {
       std::cerr << "Connect error: " << context_->errstr << std::endl;
