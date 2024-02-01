@@ -162,17 +162,17 @@ sockcompat.o: sockcompat.c sockcompat.h
 test.o: test.c fmacros.h hiredis.h read.h sds.h alloc.h net.h sockcompat.h win32.h
 
 $(DYLIBNAME): $(OBJ)
-	$(DYLIB_MAKE_CMD) -o $(DYLIBNAME) $(OBJ) $(REAL_LDFLAGS)
+	$(DYLIB_MAKE_CMD) -o $(DYLIBNAME) $(OBJ) ../homa/libhoma.a $(REAL_LDFLAGS)
 
 $(STLIBNAME): $(OBJ)
 	$(STLIB_MAKE_CMD) $(STLIBNAME) $(OBJ) ../homa/libhoma.a
 
 #################### SSL building rules start ####################
 $(SSL_DYLIBNAME): $(SSL_OBJ)
-	$(SSL_DYLIB_MAKE_CMD) $(DYLIB_PLUGIN) -o $(SSL_DYLIBNAME) $(SSL_OBJ) $(REAL_LDFLAGS) $(LDFLAGS) $(SSL_LDFLAGS)
+	$(SSL_DYLIB_MAKE_CMD) $(DYLIB_PLUGIN) -o $(SSL_DYLIBNAME) ../homa/libhoma.a $(SSL_OBJ) ../homa/libhoma.a $(REAL_LDFLAGS) $(LDFLAGS) $(SSL_LDFLAGS)
 
 $(SSL_STLIBNAME): $(SSL_OBJ)
-	$(STLIB_MAKE_CMD) $(SSL_STLIBNAME) $(SSL_OBJ)
+	$(STLIB_MAKE_CMD) $(SSL_STLIBNAME) $(SSL_OBJ) ../homa/libhoma.a
 
 $(SSL_OBJ): ssl.c hiredis.h read.h sds.h alloc.h async.h win32.h async_private.h
 #################### SSL building rules end ####################

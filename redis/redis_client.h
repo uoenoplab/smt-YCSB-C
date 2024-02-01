@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include "redis/hiredis/hiredis.h"
+#include "redis/hiredis/hiredis_ssl.h"
 
 namespace ycsbc {
 
@@ -22,6 +23,8 @@ class RedisClient {
  private:
   void HandleError(redisReply *reply, const char *hint);
 
+  redisSSLContext *ssl;
+  redisSSLContextError ssl_error;
   redisContext *context_;
   int slaves_;
 };
@@ -31,11 +34,33 @@ class RedisClient {
 //
 inline RedisClient::RedisClient(const char *host, int port, int slaves) :
     slaves_(slaves) {
-  if (port == 8888) {
+  if (port == 8886) {
     context_ = redisConnectHoma(host, port);
   }
-  else
+  else if (port == 8887) {
+    context_ = redisConnectHomaLs(host, port);
+  }
+  else {
+    if (port == 8889) {
+      redisInitOpenSSL();
+      redisSSLOptions options;
+      options.cacert_filename = "./tls/ca.crt";
+      options.cert_filename = "./tls/redis.crt";
+      options.private_key_filename = "./tls/redis.key";
+      options.capath = NULL;
+      options.server_name = NULL;
+      options.verify_mode = REDIS_SSL_VERIFY_NONE;
+  
+      ssl = redisCreateSSLContextWithOptions(&options, &ssl_error);
+      if (ssl == NULL) {
+          printf("SSL Context error: %s\n",
+                  redisSSLContextGetError(ssl_error));
+          exit(1);
+      }
+    }
     context_ = redisConnect(host, port);
+  }
+
   if (!context_ || context_->err) {
     if (context_) {
       std::cerr << "Connect error: " << context_->errstr << std::endl;
@@ -44,6 +69,15 @@ inline RedisClient::RedisClient(const char *host, int port, int slaves) :
       std::cerr << "Connect error: can't allocate redis context!" << std::endl;
     }
     exit(1);
+  }
+
+  if (port == 8889) {
+    if (redisInitiateSSLWithContext(context_, ssl) != REDIS_OK) {
+        printf("Couldn't initialize SSL!\n");
+        printf("Error: %s\n", context_->errstr);
+        redisFree(context_);
+        exit(1);
+    }
   }
 }
 
