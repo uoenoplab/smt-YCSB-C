@@ -150,6 +150,8 @@ void redisFreeSSLContext(redisSSLContext *redis_ssl_ctx);
 
 int redisInitiateSSLWithContext(redisContext *c, redisSSLContext *redis_ssl_ctx);
 
+int redisInitiateKTLSWithContext(redisContext *c);
+
 /**
  * Initiate SSL/TLS negotiation on a provided OpenSSL SSL object.
  */

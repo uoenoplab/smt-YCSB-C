@@ -34,14 +34,14 @@ class RedisClient {
 //
 inline RedisClient::RedisClient(const char *host, int port, int slaves) :
     slaves_(slaves) {
-  if (port == 8886) {
+  if (port >= 5000 && port < 6000) {
     context_ = redisConnectHoma(host, port);
   }
-  else if (port == 8887) {
+  else if (port >= 6000 && port < 7000) {
     context_ = redisConnectHomaLs(host, port);
   }
   else {
-    if (port == 8889) {
+    if (port >= 8000 && port < 9000) {
       redisInitOpenSSL();
       redisSSLOptions options;
       options.cacert_filename = "./tls/ca.crt";
@@ -50,7 +50,7 @@ inline RedisClient::RedisClient(const char *host, int port, int slaves) :
       options.capath = NULL;
       options.server_name = NULL;
       options.verify_mode = REDIS_SSL_VERIFY_NONE;
-  
+
       ssl = redisCreateSSLContextWithOptions(&options, &ssl_error);
       if (ssl == NULL) {
           printf("SSL Context error: %s\n",
@@ -71,7 +71,16 @@ inline RedisClient::RedisClient(const char *host, int port, int slaves) :
     exit(1);
   }
 
-  if (port == 8889) {
+  if (port >= 9000 && port < 10000) {
+    if (redisInitiateKTLSWithContext(context_) != REDIS_OK) {
+      printf("Couldn't initialize TCP kTLS (hardcode)!\n");
+      printf("Error: %s\n", context_->errstr);
+      redisFree(context_);
+      exit(1);
+    }
+  }
+
+  if (port >= 8000 && port < 9000) {
     if (redisInitiateSSLWithContext(context_, ssl) != REDIS_OK) {
         printf("Couldn't initialize SSL!\n");
         printf("Error: %s\n", context_->errstr);
@@ -110,7 +119,7 @@ inline void RedisClient::HandleError(redisReply *reply, const char *hint) {
   std::cerr << hint << " error: " << context_->errstr << std::endl;
   if (reply) freeReplyObject(reply);
   redisFree(context_);
-  exit(2); 
+  exit(2);
 }
 
 } // namespace ycsbc
