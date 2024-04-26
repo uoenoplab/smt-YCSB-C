@@ -6,7 +6,7 @@ first_core=1
 last_core=1
 queues=63
 tls_hw="on"
-host=n13-data
+host=n12-data
 
 #/root/setup_cores.sh $((last_core + 1)) 32
 
@@ -22,7 +22,7 @@ mv *.output bak/
 rm -f tmp_*.txt
 
 #for port_prefix in 50 60 70 80; do
-for port_prefix in 70 80; do
+for port_prefix in 70; do
 	version_name=""
 	if [ $port_prefix -eq 50 ]; then
 		version_name="Homa"
@@ -47,7 +47,7 @@ for port_prefix in 70 80; do
 		for workload in a b c d f; do
 			for id in `seq -f "%02g" $first_core $last_core`; do
 				# clear db
-				echo "FLUSHDB" | ../redis/src/redis-cli -h "$host" -p "70$id" & # fix to use TCP to flush
+				echo "FLUSHDB" | ../redis-noktls/src/redis-cli -h "$host" -p "70$id" & # fix to use TCP to flush
 			done
 			wait
 			sleep 2

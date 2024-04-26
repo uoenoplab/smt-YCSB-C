@@ -179,4 +179,3 @@ void UsageMessage(const char *command) {
 inline bool StrStartWith(const char *str, const char *pre) {
   return strncmp(str, pre, strlen(pre)) == 0;
 }
-
