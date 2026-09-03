@@ -10,6 +10,7 @@
 #define YCSB_C_CLIENT_H_
 
 #include <string>
+#include <mutex>
 #include "db.h"
 #include "core_workload.h"
 #include "utils.h"
@@ -38,15 +39,26 @@ class Client {
 };
 
 inline bool Client::DoInsert() {
-  std::string key = workload_.NextSequenceKey();
+  /* The workload generators are shared across threads: generate under the
+   * workload mutex, but keep the (blocking) DB call outside it. */
+  std::string key;
   std::vector<DB::KVPair> pairs;
-  workload_.BuildValues(pairs);
+  {
+    std::lock_guard<std::mutex> lock(workload_.mutex());
+    key = workload_.NextSequenceKey();
+    workload_.BuildValues(pairs);
+  }
   return (db_.Insert(workload_.NextTable(), key, pairs) == DB::kOK);
 }
 
 inline bool Client::DoTransaction() {
+  Operation op;
+  {
+    std::lock_guard<std::mutex> lock(workload_.mutex());
+    op = workload_.NextOperation();
+  }
   int status = -1;
-  switch (workload_.NextOperation()) {
+  switch (op) {
     case READ:
       status = TransactionRead();
       break;
@@ -71,70 +83,91 @@ inline bool Client::DoTransaction() {
 
 inline int Client::TransactionRead() {
   const std::string &table = workload_.NextTable();
-  const std::string &key = workload_.NextTransactionKey();
-  std::vector<DB::KVPair> result;
-  if (!workload_.read_all_fields()) {
-    std::vector<std::string> fields;
-    fields.push_back("field" + workload_.NextFieldName());
-    return db_.Read(table, key, &fields, result);
-  } else {
-    return db_.Read(table, key, NULL, result);
+  std::string key;
+  std::vector<std::string> fields;
+  {
+    std::lock_guard<std::mutex> lock(workload_.mutex());
+    key = workload_.NextTransactionKey();
+    if (!workload_.read_all_fields())
+      fields.push_back("field" + workload_.NextFieldName());
   }
+  std::vector<DB::KVPair> result;
+  if (!fields.empty())
+    return db_.Read(table, key, &fields, result);
+  else
+    return db_.Read(table, key, NULL, result);
 }
 
 inline int Client::TransactionReadModifyWrite() {
   const std::string &table = workload_.NextTable();
-  const std::string &key = workload_.NextTransactionKey();
-  std::vector<DB::KVPair> result;
-
-  if (!workload_.read_all_fields()) {
-    std::vector<std::string> fields;
-    fields.push_back("field" + workload_.NextFieldName());
-    db_.Read(table, key, &fields, result);
-  } else {
-    db_.Read(table, key, NULL, result);
+  std::string key;
+  std::vector<std::string> fields;
+  {
+    std::lock_guard<std::mutex> lock(workload_.mutex());
+    key = workload_.NextTransactionKey();
+    if (!workload_.read_all_fields())
+      fields.push_back("field" + workload_.NextFieldName());
   }
+  std::vector<DB::KVPair> result;
+  if (!fields.empty())
+    db_.Read(table, key, &fields, result);
+  else
+    db_.Read(table, key, NULL, result);
 
   std::vector<DB::KVPair> values;
-  if (workload_.write_all_fields()) {
-    workload_.BuildValues(values);
-  } else {
-    workload_.BuildUpdate(values);
+  {
+    std::lock_guard<std::mutex> lock(workload_.mutex());
+    if (workload_.write_all_fields())
+      workload_.BuildValues(values);
+    else
+      workload_.BuildUpdate(values);
   }
   return db_.Update(table, key, values);
 }
 
 inline int Client::TransactionScan() {
   const std::string &table = workload_.NextTable();
-  const std::string &key = workload_.NextTransactionKey();
-  int len = workload_.NextScanLength();
-  std::vector<std::vector<DB::KVPair>> result;
-  if (!workload_.read_all_fields()) {
-    std::vector<std::string> fields;
-    fields.push_back("field" + workload_.NextFieldName());
-    return db_.Scan(table, key, len, &fields, result);
-  } else {
-    return db_.Scan(table, key, len, NULL, result);
+  std::string key;
+  int len;
+  std::vector<std::string> fields;
+  {
+    std::lock_guard<std::mutex> lock(workload_.mutex());
+    key = workload_.NextTransactionKey();
+    len = workload_.NextScanLength();
+    if (!workload_.read_all_fields())
+      fields.push_back("field" + workload_.NextFieldName());
   }
+  std::vector<std::vector<DB::KVPair>> result;
+  if (!fields.empty())
+    return db_.Scan(table, key, len, &fields, result);
+  else
+    return db_.Scan(table, key, len, NULL, result);
 }
 
 inline int Client::TransactionUpdate() {
   const std::string &table = workload_.NextTable();
-  const std::string &key = workload_.NextTransactionKey();
+  std::string key;
   std::vector<DB::KVPair> values;
-  if (workload_.write_all_fields()) {
-    workload_.BuildValues(values);
-  } else {
-    workload_.BuildUpdate(values);
+  {
+    std::lock_guard<std::mutex> lock(workload_.mutex());
+    key = workload_.NextTransactionKey();
+    if (workload_.write_all_fields())
+      workload_.BuildValues(values);
+    else
+      workload_.BuildUpdate(values);
   }
   return db_.Update(table, key, values);
 }
 
 inline int Client::TransactionInsert() {
   const std::string &table = workload_.NextTable();
-  const std::string &key = workload_.NextSequenceKey();
+  std::string key;
   std::vector<DB::KVPair> values;
-  workload_.BuildValues(values);
+  {
+    std::lock_guard<std::mutex> lock(workload_.mutex());
+    key = workload_.NextSequenceKey();
+    workload_.BuildValues(values);
+  }
   return db_.Insert(table, key, values);
 } 
 

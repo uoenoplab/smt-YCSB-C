@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
 #include "db.h"
 #include "properties.h"
 #include "generator.h"
@@ -159,6 +160,10 @@ class CoreWorkload {
   bool read_all_fields() const { return read_all_fields_; }
   bool write_all_fields() const { return write_all_fields_; }
 
+  /* The generators above are not thread-safe; callers running on multiple
+   * threads must hold this mutex around any NextXxx / BuildXxx calls. */
+  std::mutex &mutex() { return mutex_; }
+
   CoreWorkload() :
       field_count_(0), read_all_fields_(false), write_all_fields_(false),
       field_len_generator_(NULL), key_generator_(NULL), key_chooser_(NULL),
@@ -178,6 +183,7 @@ class CoreWorkload {
   static Generator<uint64_t> *GetFieldLenGenerator(const utils::Properties &p);
   std::string BuildKeyName(uint64_t key_num);
 
+  std::mutex mutex_;
   std::string table_name_;
   int field_count_;
   bool read_all_fields_;

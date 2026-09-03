@@ -27,7 +27,8 @@ DB* DBFactory::CreateDB(utils::Properties &props) {
   } else if (props["dbname"] == "redis") {
     int port = stoi(props["port"]);
     int slaves = stoi(props["slaves"]);
-    return new RedisDB(props["host"].c_str(), port, slaves);
+    std::string transport = props.GetProperty("transport", "tcp");
+    return new RedisDB(props["host"].c_str(), port, slaves, transport);
   } else if (props["dbname"] == "tbb_rand") {
     return new TbbRandDB;
   } else if (props["dbname"] == "tbb_scan") {

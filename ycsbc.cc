@@ -128,6 +128,14 @@ string ParseCommandLine(int argc, const char *argv[], utils::Properties &props) 
       }
       props.SetProperty("port", argv[argindex]);
       argindex++;
+    } else if (strcmp(argv[argindex], "-transport") == 0) {
+      argindex++;
+      if (argindex >= argc) {
+        UsageMessage(argv[0]);
+        exit(0);
+      }
+      props.SetProperty("transport", argv[argindex]);
+      argindex++;
     } else if (strcmp(argv[argindex], "-slaves") == 0) {
       argindex++;
       if (argindex >= argc) {
