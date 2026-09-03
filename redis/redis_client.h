@@ -7,13 +7,15 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 #include "redis/hiredis/hiredis.h"
 
 namespace ycsbc {
 
 class RedisClient {
  public:
-  RedisClient(const char *host, int port, int slaves);
+  RedisClient(const char *host, int port, int slaves,
+              const std::string &transport = "tcp");
   ~RedisClient();
 
   int Command(std::string cmd);
@@ -29,9 +31,11 @@ class RedisClient {
 //
 // Implementation
 //
-inline RedisClient::RedisClient(const char *host, int port, int slaves) :
+inline RedisClient::RedisClient(const char *host, int port, int slaves,
+                                const std::string &transport) :
     slaves_(slaves) {
-  context_ = redisConnect(host, port);
+  context_ = (transport == "homa") ? redisConnectHoma(host, port)
+                                   : redisConnect(host, port);
   if (!context_ || context_->err) {
     if (context_) {
       std::cerr << "Connect error: " << context_->errstr << std::endl;
@@ -51,7 +55,22 @@ inline RedisClient::~RedisClient() {
 
 inline int RedisClient::Command(std::string cmd) {
   redisReply *reply;
-  redisAppendCommand(context_, cmd.data());
+  /* Split on spaces and send via argv so field values containing '%' (or other
+   * printf specifiers) can't be misread as a format string / corrupt the heap.
+   * YCSB tokens contain no embedded spaces. */
+  std::vector<std::string> toks;
+  for (size_t i = 0, j; i < cmd.size(); i = j + 1) {
+    j = cmd.find(' ', i);
+    if (j == std::string::npos) j = cmd.size();
+    if (j > i) toks.emplace_back(cmd.substr(i, j - i));
+  }
+  std::vector<const char *> argv(toks.size());
+  std::vector<size_t> argvlen(toks.size());
+  for (size_t i = 0; i < toks.size(); i++) {
+    argv[i] = toks[i].data();
+    argvlen[i] = toks[i].size();
+  }
+  redisAppendCommandArgv(context_, (int)argv.size(), argv.data(), argvlen.data());
   if (slaves_) {
     redisAppendCommand(context_, "WAIT %d %d", slaves_, 0);
   }
