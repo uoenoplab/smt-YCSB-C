@@ -855,6 +855,9 @@ redisContext *redisConnectWithOptions(const redisOptions *options) {
     } else if (options->type == REDIS_CONN_HOMA) {
         redisContextConnectHoma(c, options->endpoint.tcp.ip,
                                 options->endpoint.tcp.port, options->connect_timeout);
+    } else if (options->type == REDIS_CONN_SMT) {
+        redisContextConnectSmt(c, options->endpoint.tcp.ip,
+                               options->endpoint.tcp.port, options->connect_timeout);
     } else if (options->type == REDIS_CONN_USERFD) {
         c->fd = options->endpoint.fd;
         c->flags |= REDIS_CONNECTED;
@@ -894,6 +897,25 @@ redisContext *redisConnectHoma(const char *ip, int port) {
 redisContext *redisConnectHomaNonBlock(const char *ip, int port) {
     redisOptions options = {0};
     options.type = REDIS_CONN_HOMA;
+    options.endpoint.tcp.ip = ip;
+    options.endpoint.tcp.port = port;
+    options.options |= REDIS_OPT_NONBLOCK;
+    return redisConnectWithOptions(&options);
+}
+
+/* Connect to a Redis instance over SMT (Homa + kernel-TLS key). Same endpoint
+ * reuse as redisConnectHoma. */
+redisContext *redisConnectSmt(const char *ip, int port) {
+    redisOptions options = {0};
+    options.type = REDIS_CONN_SMT;
+    options.endpoint.tcp.ip = ip;
+    options.endpoint.tcp.port = port;
+    return redisConnectWithOptions(&options);
+}
+
+redisContext *redisConnectSmtNonBlock(const char *ip, int port) {
+    redisOptions options = {0};
+    options.type = REDIS_CONN_SMT;
     options.endpoint.tcp.ip = ip;
     options.endpoint.tcp.port = port;
     options.options |= REDIS_OPT_NONBLOCK;

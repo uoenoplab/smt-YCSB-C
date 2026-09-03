@@ -34,7 +34,8 @@ class RedisClient {
 inline RedisClient::RedisClient(const char *host, int port, int slaves,
                                 const std::string &transport) :
     slaves_(slaves) {
-  context_ = (transport == "homa") ? redisConnectHoma(host, port)
+  context_ = (transport == "smt")  ? redisConnectSmt(host, port) :
+             (transport == "homa") ? redisConnectHoma(host, port)
                                    : redisConnect(host, port);
   if (!context_ || context_->err) {
     if (context_) {
