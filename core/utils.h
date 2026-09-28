@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <exception>
+#include <atomic>
 #include <random>
 
 namespace utils {
@@ -35,8 +36,12 @@ inline uint64_t FNVHash64(uint64_t val) {
 inline uint64_t Hash(uint64_t val) { return FNVHash64(val); }
 
 inline double RandomDouble(double min = 0.0, double max = 1.0) {
-  static std::default_random_engine generator;
-  static std::uniform_real_distribution<double> uniform(min, max);
+  // One engine per thread: the generators calling this each hold only their own
+  // lock. Seeds differ per thread (else all threads draw the same keys) and are
+  // deterministic; the first thread gets the old shared engine's default seed, 1.
+  static std::atomic<unsigned> next_seed{1};
+  thread_local std::default_random_engine generator(next_seed++);
+  thread_local std::uniform_real_distribution<double> uniform(min, max);
   return uniform(generator);
 }
 
