@@ -13,9 +13,6 @@ Serving Benchmark, with a Redis client that can use three transports:
 The Redis server with the same transports is [uoenoplab/smt-redis](https://github.com/uoenoplab/smt-redis).
 YCSB-C's own README is [README-ycsbc.md](README-ycsbc.md).
 
-> [!NOTE]
-> SMT support compiles, and the server and clients can select it. It has not yet run on an SMT-capable `homa.ko`.
-
 ## Build
 
 ```
